@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>GameHub Pro — Background + Audio + Multi-page Menu</title>
+  <style>
+    :root{
+      --bg:#071428; --panel:#0f2436; --muted:#9fb3c9; --accent:#6ee7b7; --glass: rgba(255,255,255,0.04);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter, system-ui, Arial; background:linear-gradient(180deg,#031023 0%,#071428 70%); color:#e7f1fb; -webkit-font-smoothing:antialiased}
+    #bgCanvas{position:fixed;inset:0;z-index:0;display:block}
+    .app{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column}
+    header{backdrop-filter: blur(8px); background:linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border-bottom:1px solid rgba(255,255,255,0.03)}
+    .nav{max-width:1100px;margin:0 auto;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .brand{display:flex;align-items:center;gap:12px;font-weight:800}
+    .brand .mark{width:38px;height:38;border-radius:8px;display:grid;place-items:center;background:linear-gradient(135deg,#6ee7b7,#7c3aed);color:#04121a}
+    nav.links{display:flex;gap:14px;align-items:center}
+    .links a{color:var(--muted);text-decoration:none;padding:8px 10px;border-radius:8px}
+    .links a.active, .links a:hover{color:#fff;background:rgba(255,255,255,0.03)}
+    .controls{display:flex;gap:8px;align-items:center}
+    .btn{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted);padding:8px 12px;border-radius:10px;cursor:pointer}
+    .btn.primary{background:linear-gradient(135deg,#6ee7b7,#60a5fa);color:#04121a;border:none}
+    main{max-width:1100px;margin:22px auto;padding:18px;display:grid;grid-template-columns:1fr 420px;gap:22px}
+    @media (max-width:960px){main{grid-template-columns:1fr;padding:12px} .sidebar{order:2}}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.04);padding:16px;border-radius:14px;box-shadow:0 10px 40px rgba(2,6,23,0.6)}
+    h1,h2,h3{margin:0 0 12px}
+    p{color:var(--muted);margin:0 0 12px}
+    .page{display:none}
+    .page.active{display:block}
+    .sidebar{display:flex;flex-direction:column;gap:16px}
+    .small {font-size:0.9rem;color:var(--muted)}
+    .games-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+    @media (max-width:520px){.games-grid{grid-template-columns:1fr}}
+    .game-card{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.03)}
+    .game-card .icon{width:44px;height:44;border-radius:10px;display:grid;place-items:center;background:rgba(110,231,183,0.08);color:var(--accent);font-weight:800}
+    .game-row{display:flex;gap:10px;align-items:center;justify-content:space-between}
+    .game-panel{margin-top:12px}
+    .ttt-board{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .cell{aspect-ratio:1;background:rgba(255,255,255,0.02);border-radius:10px;border:1px solid rgba(255,255,255,0.03);display:grid;place-items:center;font-size:2rem;font-weight:800;cursor:pointer}
+    .status{margin-top:10px;color:var(--muted);min-height:22px}
+    .memory-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+    .memory-card{aspect-ratio:1;border-radius:10px;background:rgba(255,255,255,0.02);display:grid;place-items:center;font-size:1.6rem;cursor:pointer}
+    .reaction-area{display:flex;flex-direction:column;gap:10px;align-items:center}
+    .reaction-btn{padding:12px 16px;border-radius:10px;background:linear-gradient(135deg,#6ee7b7,#60a5fa);color:#04121a;border:none;font-weight:800;cursor:pointer}
+    .range{width:100%}
+    footer{max-width:1100px;margin:24px auto;padding:12px 18px;color:var(--muted);font-size:0.9rem}
+    .badge{display:inline-block;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,0.03);color:var(--muted);font-weight:700}
+  </style>
+</head>
+<body>
+  <canvas id="bgCanvas"></canvas>
+  <div class="app">
+    <header>
+      <div class="nav">
+        <div class="brand">
+          <div class="mark">G</div>
+          <div>
+            <div style="font-size:14px;color:var(--muted)">GameHub Pro</div>
+            <div style="font-size:13px;color:var(--muted)">Background • Audio • Multi-page</div>
+          </div>
+        </div>
+
+        <nav class="links" id="mainNav">
+          <a href="#" data-page="home" class="active">Home</a>
+          <a href="#" data-page="games">Games</a>
+          <a href="#" data-page="about">About</a>
+          <a href="#" data-page="settings">Settings</a>
+        </nav>
+
+        <div class="controls">
+          <button class="btn" id="muteBtn" title="Bật/Tắt nhạc">🔈</button>
+          <button class="btn primary" id="playNow">Play Now</button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section>
+        <div class="page active card" id="page-home">
+          <h1>Chào mừng đến GameHub Pro</h1>
+          <p>Trang này có background động, âm thanh nền có thể bật/tắt và menu nhiều trang—mỗi game chạy trong khu vực riêng. Click "Games" để chọn trò chơi và "Settings" để điều chỉnh âm thanh.</p>
+
+          <div class="game-panel card" style="margin-top:12px">
+            <h3>Featured</h3>
+            <div class="games-grid" style="margin-top:10px">
+              <div class="game-card">
+                <div class="game-row"><div><div class="icon">❌</div></div><div><strong>Tic Tac Toe</strong></div></div>
+                <p class="small">Cờ 3x3 đối kháng — chơi 2 người (cùng máy).</p>
+                <div class="game-row"><button class="btn" onclick="openPage('games');openGame('tic')">Chơi</button></div>
+              </div>
+
+              <div class="game-card">
+                <div class="game-row"><div><div class="icon">🧠</div></div><div><strong>Memory</strong></div></div>
+                <p class="small">Ghép cặp emoji, rèn trí nhớ.</p>
+                <div class="game-row"><button class="btn" onclick="openPage('games');openGame('memory')">Chơi</button></div>
+              </div>
+
+              <div class="game-card">
+                <div class="game-row"><div><div class="icon">🎯</div></div><div><strong>Reaction</strong></div></div>
+                <p class="small">Thử thách phản xạ — đo thời gian phản ứng.</p>
+                <div class="game-row"><button class="btn" onclick="openPage('games');openGame('reaction')">Chơi</button></div>
+              </div>
+
+              <div class="game-card">
+                <div class="game-row"><div><div class="icon">🔢</div></div><div><strong>Guess</strong></div></div>
+                <p class="small">Đoán số 1–100, thử thách may mắn.</p>
+                <div class="game-row"><button class="btn" onclick="openPage('games');openGame('guess')">Chơi</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="page card" id="page-games">
+          <h2>Games</h2>
+          <p class="small">Chọn một game từ danh sách bên dưới.</p>
+
+          <div class="games-grid" style="margin-top:12px">
+            <div class="game-card"><div class="icon">❌</div><h3>Tic Tac Toe</h3><p class="small">3x3 classic.</p><div class="game-row"><button class="btn" onclick="openGame('tic')">Chơi</button></div></div>
+            <div class="game-card"><div class="icon">🧠</div><h3>Memory Match</h3><p class="small">Find pairs.</p><div class="game-row"><button class="btn" onclick="openGame('memory')">Chơi</button></div></div>
+            <div class="game-card"><div class="icon">✊</div><h3>Rock Paper Scissors</h3><p class="small">Vs computer.</p><div class="game-row"><button class="btn" onclick="openGame('rps')">Chơi</button></div></div>
+            <div class="game-card"><div class="icon">🎯</div><h3>Guess Number</h3><p class="small">1–100.</p><div class="game-row"><button class="btn" onclick="openGame('guess')">Chơi</button></div></div>
+            <div class="game-card"><div class="icon">⚡</div><h3>Reaction Rush</h3><p class="small">Measure reaction time.</p><div class="game-row"><button class="btn" onclick="openGame('reaction')">Chơi</button></div></div>
+            <div class="game-card"><div class="icon">❓</div><h3>Quick Quiz</h3><p class="small">Small quiz.</p><div class="game-row"><button class="btn" onclick="openGame('quiz')">Chơi</button></div></div>
+          </div>
+
+          <div id="gameArea" class="game-panel card" style="margin-top:18px">
+            <div id="panel-tic" class="panel">
+              <h3>Tic Tac Toe</h3>
+              <div class="ttt-board" id="tttBoard"></div>
+              <div class="status" id="tttStatus"></div>
+            </div>
+
+            <div id="panel-memory" class="panel" style="display:none">
+              <h3>Memory Match</h3>
+              <div class="memory-grid" id="memoryGrid"></div>
+              <div class="status small" id="memoryStatus"></div>
+            </div>
+
+            <div id="panel-rps" class="panel" style="display:none">
+              <h3>Rock Paper Scissors</h3>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+                <button class="btn" data-choice="✊">✊</button>
+                <button class="btn" data-choice="✋">✋</button>
+                <button class="btn" data-choice="✌️">✌️</button>
+              </div>
+              <div class="status" id="rpsResult">Chọn 1 để bắt đầu</div>
+            </div>
+
+            <div id="panel-guess" class="panel" style="display:none">
+              <h3>Guess Number</h3>
+              <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+                <input id="guessInput" type="number" min="1" max="100" placeholder="1–100" style="padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit">
+                <button class="btn" onclick="submitGuess()">Đoán</button>
+              </div>
+              <div class="status" id="guessOutput">Mình đã chọn 1 số.</div>
+            </div>
+
+            <div id="panel-quiz" class="panel" style="display:none">
+              <h3>Quick Quiz</h3>
+              <div id="quizQuestion" style="margin-top:8px;font-weight:700"></div>
+              <div id="quizOptions" style="margin-top:10px;display:grid;gap:8px"></div>
+              <div class="status" id="quizResult"></div>
+            </div>
+
+            <div id="panel-reaction" class="panel" style="display:none">
+              <h3>Reaction Rush</h3>
+              <div class="reaction-area">
+                <button id="reactionBtn" class="reaction-btn">Bắt đầu</button>
+                <div class="status" id="reactionOutput">Nhấn Bắt đầu</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="page card" id="page-about">
+          <h2>About</h2>
+          <p class="small">Phiên bản demo GameHub Pro. Môi trường SPA nhẹ, canvas background động, âm thanh nền & effects bằng Web Audio API. Tùy biến thêm assets âm thanh, lưu điểm, hoặc mở rộng sang React/Next.js rất dễ.</p>
+        </div>
+
+        <div class="page card" id="page-settings">
+          <h2>Settings</h2>
+          <p class="small">Điều chỉnh âm thanh và trải nghiệm.</p>
+          <div style="display:grid;gap:10px;margin-top:8px">
+            <label class="small">Nhạc nền: <span id="musicState">Tắt</span></label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button class="btn" id="toggleMusic">Bật/Tắt Music</button>
+              <input type="range" id="volumeRange" class="range" min="0" max="1" step="0.01" value="0.25" />
+            </div>
+            <label class="small">Hiệu ứng âm thanh: <span id="sfxState">Bật</span></label>
+            <div style="display:flex;gap:8px">
+              <button class="btn" id="toggleSfx">Bật/Tắt SFX</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="sidebar">
+        <div class="card">
+          <h3>Điểm hàng đầu</h3>
+          <div style="margin-top:8px" class="small">
+            <div style="display:flex;justify-content:space-between"><span>Player1</span><strong>1200</strong></div>
+            <div style="display:flex;justify-content:space-between"><span>Player2</span><strong>980</strong></div>
+            <div style="display:flex;justify-content:space-between"><span>Player3</span><strong>870</strong></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Quick Controls</h3>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn" onclick="openPage('games')">Mở Games</button>
+            <button class="btn" onclick="openPage('settings')">Settings</button>
+            <button class="btn primary" id="quickPlay">Random Play</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Tips</h3>
+          <ul class="small" style="margin:8px 0 0 18px;color:var(--muted)">
+            <li>Nhấn Play Now để bắt đầu nhanh.</li>
+            <li>Trong Settings bật nhạc nền để có không khí.</li>
+            <li>Thêm hình nền/âm thanh riêng trong tương lai.</li>
+          </ul>
+        </div>
+      </aside>
+    </main>
+
+    <footer>© GameHub Pro — Demo. Mở rộng: thêm assets, lưu điểm bằng localStorage, hoặc deploy lên GitHub Pages.</footer>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('bgCanvas');
+    const ctx = canvas.getContext('2d');
+    let W = canvas.width = innerWidth;
+    let H = canvas.height = innerHeight;
+    window.addEventListener('resize', ()=>{W=canvas.width=innerWidth;H=canvas.height=innerHeight; initParticles()});
+
+    const particles = [];
+    const PCOUNT = Math.round((W*H)/60000 * 60);
+    function makeParticle(){
+      return {
+        x: Math.random()*W,
+        y: Math.random()*H,
+        vx: (Math.random()-0.5)*0.35,
+        vy: (Math.random()-0.5)*0.35,
+        r: 1 + Math.random()*2,
+        hue: 180 + Math.random()*60
+      }
+    }
+    function initParticles(){
+      particles.length = 0;
+      for(let i=0;i<Math.max(40,PCOUNT);i++) particles.push(makeParticle());
+    }
+    function draw(){
+      ctx.clearRect(0,0,W,H);
+      const g = ctx.createLinearGradient(0,0,W,H);
+      g.addColorStop(0,'rgba(10,18,34,0.6)');
+      g.addColorStop(1,'rgba(2,6,23,0.7)');
+      ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+
+      for(let p of particles){
+        p.x += p.vx; p.y += p.vy;
+        if(p.x < -10) p.x = W+10;
+        if(p.x > W+10) p.x = -10;
+        if(p.y < -10) p.y = H+10;
+        if(p.y > H+10) p.y = -10;
+        ctx.beginPath();
+        ctx.fillStyle = `hsla(${p.hue},80%,65%,0.08)`;
+        ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+        ctx.fill();
+      }
+
+      for(let i=0;i<particles.length;i++){
+        for(let j=i+1;j<particles.length;j++){
+          const a=particles[i], b=particles[j];
+          const dx = a.x-b.x, dy = a.y-b.y;
+          const d = Math.sqrt(dx*dx+dy*dy);
+          if(d<120){
+            ctx.strokeStyle = `rgba(110,231,183,${0.009*d < 0.18 ? 0.18 - 0.0015*d : 0.02})`;
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+          }
+        }
+      }
+      requestAnimationFrame(draw);
+    }
+    initParticles(); draw();
+
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    const audioCtx = new AudioCtx();
+    let backgroundGain = audioCtx.createGain();
+    backgroundGain.gain.value = 0.0;
+    backgroundGain.connect(audioCtx.destination);
+
+    const osc1 = audioCtx.createOscillator();
+    osc1.type = 'sine'; osc1.frequency.value = 110;
+    const osc2 = audioCtx.createOscillator();
+    osc2.type = 'sine'; osc2.frequency.value = 220;
+    const oscGain = audioCtx.createGain();
+    oscGain.gain.value = 0.01;
+    osc1.connect(oscGain); osc2.connect(oscGain); oscGain.connect(backgroundGain);
+
+    const lfo = audioCtx.createOscillator();
+    lfo.frequency.value = 0.07;
+    const lfoGain = audioCtx.createGain(); lfoGain.gain.value = 18;
+    lfo.connect(lfoGain); lfoGain.connect(osc1.frequency);
+    osc1.start(); osc2.start(); lfo.start();
+
+    let sfxEnabled = true;
+    function sfxClick(){
+      if(!sfxEnabled) return;
+      const t = audioCtx.currentTime;
+      const o = audioCtx.createOscillator(); o.type='sine'; o.frequency.setValueAtTime(900,t);
+      const g = audioCtx.createGain(); g.gain.setValueAtTime(0.0001,t);
+      g.gain.exponentialRampToValueAtTime(0.03,t+0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001,t+0.22);
+      o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(t+0.25);
+    }
+    function sfxSuccess(){
+      if(!sfxEnabled) return;
+      const t = audioCtx.currentTime;
+      const chord = [440,660,880];
+      chord.forEach((f,i)=>{
+        const o = audioCtx.createOscillator(); o.type='triangle'; o.frequency.setValueAtTime(f,t+0.02*i);
+        const g = audioCtx.createGain(); g.gain.setValueAtTime(0.0001,t+0.02*i);
+        g.gain.exponentialRampToValueAtTime(0.05,t+0.05+0.02*i);
+        g.gain.exponentialRampToValueAtTime(0.0001,t+0.6);
+        o.connect(g); g.connect(audioCtx.destination); o.start(t); o.stop(t+0.7);
+      });
+    }
+
+    let musicOn = false;
+    const volumeRange = document.getElementById('volumeRange');
+    function setMusicVolume(v){ backgroundGain.gain.linearRampToValueAtTime(v, audioCtx.currentTime+0.05) }
+    setMusicVolume(0);
+
+    const toggleMusicBtn = document.getElementById('toggleMusic');
+    const musicStateEl = document.getElementById('musicState');
+    const toggleSfxBtn = document.getElementById('toggleSfx');
+    const sfxStateEl = document.getElementById('sfxState');
+    const muteBtn = document.getElementById('muteBtn');
+    const playNowBtn = document.getElementById('playNow');
+    const quickPlayBtn = document.getElementById('quickPlay');
+
+    function ensureAudio() {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    toggleMusicBtn.addEventListener('click', ()=>{ ensureAudio(); musicOn = !musicOn; musicStateEl.textContent = musicOn ? 'Bật' : 'Tắt'; setMusicVolume(musicOn ? parseFloat(volumeRange.value) : 0); sfxClick(); });
+    volumeRange.addEventListener('input', ()=>{ ensureAudio(); if(musicOn) setMusicVolume(parseFloat(volumeRange.value)); });
+    toggleSfxBtn.addEventListener('click', ()=>{ sfxEnabled = !sfxEnabled; sfxStateEl.textContent = sfxEnabled ? 'Bật' : 'Tắt'; sfxClick(); });
+    muteBtn.addEventListener('click', ()=>{ ensureAudio(); musicOn = !musicOn; musicStateEl.textContent = musicOn ? 'Bật' : 'Tắt'; setMusicVolume(musicOn ? parseFloat(volumeRange.value) : 0); sfxClick(); });
+    playNowBtn.addEventListener('click', ()=>{ openPage('games'); openGame('tic'); ensureAudio(); musicOn=true; setMusicVolume(parseFloat(volumeRange.value)); sfxClick(); });
+    quickPlayBtn.addEventListener('click', ()=>{ const choices=['tic','memory','reaction','guess']; const r = choices[Math.floor(Math.random()*choices.length)]; openPage('games'); openGame(r); sfxClick(); });
+
+    const navLinks = document.querySelectorAll('#mainNav a');
+    function openPage(pageId){
+      document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+      const el = document.getElementById('page-'+pageId);
+      if(el) el.classList.add('active');
+      navLinks.forEach(a=>a.classList.toggle('active', a.dataset.page===pageId));
+      window.scrollTo({top:0,behavior:'smooth'});
+    }
+    navLinks.forEach(a=>a.addEventListener('click',(e)=>{e.preventDefault(); openPage(a.dataset.page); sfxClick();}));
+
+    function hideAllPanels(){ document.querySelectorAll('#gameArea .panel').forEach(p=>p.style.display='none'); }
+
+    function openGame(key){
+      hideAllPanels();
+      const panel = document.getElementById('panel-'+key);
+      if(panel) panel.style.display='block';
+      sfxClick();
+      if(key==='tic'){ resetTic(); renderTicTacToe(); }
+      if(key==='memory'){ buildMemoryBoard(); }
+      if(key==='quiz'){ renderQuiz(); }
+      if(key==='reaction'){ resetReaction(); }
+      if(key==='guess'){ secretNumber = Math.floor(Math.random()*100)+1; guessAttempts=0; document.getElementById('guessOutput').textContent='Mình đã chọn 1 số'; }
+    }
+
+    let tttBoard = Array(9).fill(''), tttTurn='X';
+    function renderTicTacToe(){
+      const boardEl = document.getElementById('tttBoard');
+      boardEl.innerHTML = '';
+      tttBoard.forEach((v,i)=>{
+        const btn = document.createElement('button'); btn.className='cell'; btn.textContent=v;
+        btn.disabled = !!v;
+        btn.addEventListener('click', ()=>{ if(tttBoard[i]) return; tttBoard[i]=tttTurn; sfxClick(); const w = checkWinner(tttBoard); if(w){ document.getElementById('tttStatus').textContent = 'Người thắng: '+w; sfxSuccess(); setTimeout(()=>{ tttBoard=Array(9).fill(''); renderTicTacToe(); document.getElementById('tttStatus').textContent=''; },900); return; } if(tttBoard.every(Boolean)){ document.getElementById('tttStatus').textContent='Hòa!'; setTimeout(()=>{ tttBoard=Array(9).fill(''); renderTicTacToe(); document.getElementById('tttStatus').textContent=''; },900); return; } tttTurn = tttTurn==='X'?'O':'X'; renderTicTacToe(); document.getElementById('tttStatus').textContent='Lượt của '+tttTurn; });
+        boardEl.appendChild(btn);
+      });
+    }
+    function checkWinner(board){
+      const lines=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+      for(const [a,b,c] of lines) if(board[a] && board[a]===board[b] && board[a]===board[c]) return board[a];
+      return null;
+    }
+    function resetTic(){ tttBoard=Array(9).fill(''); tttTurn='X'; document.getElementById('tttStatus').textContent='Lượt của X'; }
+
+    const memorySymbols = ['🍉','🍋','🍇','🍒','🍊','🍏','🍍','🍓'];
+    let memoryCards=[], flipped=[], matchedPairs=0, moves=0;
+    function shuffle(arr){ return arr.sort(()=>Math.random()-0.5) }
+    function buildMemoryBoard(){
+      const grid = document.getElementById('memoryGrid');
+      memoryCards = shuffle([...memorySymbols, ...memorySymbols]); flipped=[]; matchedPairs=0; moves=0;
+      grid.innerHTML='';
+      memoryCards.forEach((sym,idx)=>{ const b=document.createElement('button'); b.className='memory-card'; b.textContent='?'; b.dataset.sym=sym; b.addEventListener('click', ()=>{ if(b.classList.contains('flipped')||b.classList.contains('matched')||flipped.length===2) return; b.classList.add('flipped'); b.textContent=sym; flipped.push(b); if(flipped.length===2){ moves++; document.getElementById('memoryStatus').textContent='Moves: '+moves; const [a,c]=flipped; if(a.dataset.sym===c.dataset.sym){ a.classList.add('matched'); c.classList.add('matched'); flipped=[]; matchedPairs++; sfxSuccess(); if(matchedPairs===memorySymbols.length){ setTimeout(()=>{ alert('Bạn đã thắng Memory Match!'); buildMemoryBoard(); },400) } } else { setTimeout(()=>{ a.classList.remove('flipped'); c.classList.remove('flipped'); a.textContent='?'; c.textContent='?'; flipped=[]; },600) } } }); grid.appendChild(b); });
+      document.getElementById('memoryStatus').textContent='Moves: 0';
+    }
+
+    document.querySelectorAll('#panel-rps .btn').forEach(b=>{
+      b.addEventListener('click', ()=>{ const user=b.dataset.choice; const choices=['✊','✋','✌️']; const comp=choices[Math.floor(Math.random()*choices.length)]; const resEl = document.getElementById('rpsResult'); if(user===comp) resEl.textContent=`Hòa! Bạn: ${user} | Máy: ${comp}`; else if((user==='✊'&&comp==='✌️')||(user==='✋'&&comp==='✊')||(user==='✌️'&&comp==='✋')){ resEl.textContent=`Bạn thắng! Bạn: ${user} | Máy: ${comp}`; sfxSuccess(); } else { resEl.textContent=`Máy thắng! Bạn: ${user} | Máy: ${comp}`; } sfxClick(); });
+    });
+
+    let secretNumber = Math.floor(Math.random()*100)+1, guessAttempts = 0;
+    function submitGuess(){ const v = Number(document.getElementById('guessInput').value); const out = document.getElementById('guessOutput'); if(!v||v<1||v>100){ out.textContent='Nhập số 1–100'; return } guessAttempts++; if(v===secretNumber){ out.textContent=`Chính xác! ${secretNumber}`; sfxSuccess(); setTimeout(()=>{ secretNumber=Math.floor(Math.random()*100)+1; guessAttempts=0; document.getElementById('guessOutput').textContent='Vòng mới!'; },900); } else if(v<secretNumber) out.textContent='Quá thấp'; else out.textContent='Quá cao'; sfxClick(); }
+
+    const quizData = [{q:'Thủ đô Việt Nam?',options:['Hà Nội','Đà Nẵng','TP.HCM','Huế'],a:'Hà Nội'},{q:'2+2=?',options:['3','4','22','5'],a:'4'}];
+    let quizIndex=0, quizScore=0;
+    function renderQuiz(){ const q=quizData[quizIndex]; if(!q){ document.getElementById('quizQuestion').textContent='Hoàn thành!'; document.getElementById('quizOptions').innerHTML=''; return } document.getElementById('quizQuestion').textContent=(quizIndex+1)+'. '+q.q; const opts=document.getElementById('quizOptions'); opts.innerHTML=''; q.options.forEach(o=>{ const btn=document.createElement('button'); btn.className='btn'; btn.textContent=o; btn.addEventListener('click', ()=>{ if(o===q.a){ quizScore++; document.getElementById('quizResult').textContent='Đúng!'; sfxSuccess(); } else document.getElementById('quizResult').textContent='Sai! Đáp án: '+q.a; quizIndex++; setTimeout(()=>renderQuiz(),700); }); opts.appendChild(btn); }); }
+    renderQuiz();
+
+    let reactionStart=0, bestTime=0, waiting=false;
+    const reactionBtn = document.getElementById('reactionBtn'), reactionOutput = document.getElementById('reactionOutput');
+    function resetReaction(){ reactionStart=0; waiting=false; reactionBtn.textContent='Bắt đầu'; reactionOutput.textContent='Nhấn nút để bắt đầu.'; }
+    reactionBtn.addEventListener('click', ()=>{
+      if(!waiting){
+        waiting=true; reactionBtn.textContent='Chờ...'; reactionOutput.textContent='Chờ màu...';
+        const delay = 1000 + Math.random()*2000;
+        setTimeout(()=>{ reactionStart=performance.now(); reactionBtn.textContent='NHẤN NGAY!'; reactionBtn.style.background='linear-gradient(135deg,#fbbf24,#f97316)'; reactionOutput.textContent='NHẤN NGAY!'; }, delay);
+      } else {
+        const elapsed = performance.now()-reactionStart;
+        if(reactionStart===0){ reactionOutput.textContent='Nhấn quá sớm!'; sfxClick(); }
+        else {
+          reactionOutput.textContent = 'Thời gian: '+Math.round(elapsed)+'ms';
+          if(bestTime===0||elapsed<bestTime) bestTime=Math.round(elapsed);
+          sfxSuccess();
+        }
+        waiting=false; reactionStart=0; reactionBtn.textContent='Bắt đầu'; reactionBtn.style.background=''; 
+      }
+    });
+
+    resetTic(); renderTicTacToe();
+    buildMemoryBoard();
+    openGame('tic');
+
+    document.addEventListener('click', ()=>{ if(audioCtx.state === 'suspended') audioCtx.resume(); }, {once:true});
+  </script>
+</body>
+</html>
